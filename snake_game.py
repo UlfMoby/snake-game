@@ -140,26 +140,67 @@ class MenuScreen:
         self.screen = screen
         self.font_title = fonts["title"]
         self.font_menu = fonts["menu"]
-        self.options = ["Play: Easy", "Play: Medium", "Play: Hard", "How to Play", "Quit"]
+        # Menu items: Play (with inline difficulty), How to Play, Quit
+        self.items = ["Play", "How to Play", "Quit"]
         self.index = 0
+        self.difficulties = list(DIFFICULTIES.keys())  # ["Easy", "Medium", "Hard"]
+        self.diff_index = 0
+
+    def _play_line_text_parts(self):
+        # Returns a list of (text, color) parts to render inline difficulty selection
+        parts = [("Play: ", WHITE if self.index != 0 else CYAN)]
+        for i, name in enumerate(self.difficulties):
+            selected = (i == self.diff_index)
+            color = YELLOW if selected else (CYAN if self.index == 0 else WHITE)
+            label = f"[{name}]" if selected else name
+            parts.append((label, color))
+            if i != len(self.difficulties) - 1:
+                parts.append(("  ", WHITE if self.index != 0 else CYAN))
+        return parts
 
     def draw(self):
         self.screen.fill(BLACK)
         draw_text(self.screen, TITLE, self.font_title, YELLOW, center=(WINDOW_WIDTH // 2, 90))
-        draw_text(self.screen, "Use Up/Down to select, Enter to confirm", self.font_menu, GRAY, center=(WINDOW_WIDTH // 2, 140))
+        draw_text(self.screen, "Up/Down: select  Left/Right: change difficulty  Enter: start", self.font_menu, GRAY, center=(WINDOW_WIDTH // 2, 140))
         base_y = 200
-        for i, opt in enumerate(self.options):
+        # Draw Play line with inline difficulty options
+        x = WINDOW_WIDTH // 2
+        # Render parts centered by measuring total width
+        parts = self._play_line_text_parts()
+        # Build a temporary surface width by summing parts
+        total_width = 0
+        surfaces = []
+        for text, color in parts:
+            img = self.font_menu.render(text, True, color)
+            surfaces.append(img)
+            total_width += img.get_width()
+        current_x = x - total_width // 2
+        y = base_y
+        for img in surfaces:
+            self.screen.blit(img, (current_x, y - img.get_height() // 2))
+            current_x += img.get_width()
+        # Draw other items
+        for i, item in enumerate(self.items[1:], start=1):
             color = CYAN if i == self.index else WHITE
-            draw_text(self.screen, opt, self.font_menu, color, center=(WINDOW_WIDTH // 2, base_y + i * 40))
+            draw_text(self.screen, item, self.font_menu, color, center=(WINDOW_WIDTH // 2, base_y + i * 40))
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_UP, pygame.K_w):
-                self.index = (self.index - 1) % len(self.options)
+                self.index = (self.index - 1) % len(self.items)
             elif event.key in (pygame.K_DOWN, pygame.K_s):
-                self.index = (self.index + 1) % len(self.options)
+                self.index = (self.index + 1) % len(self.items)
+            elif event.key in (pygame.K_LEFT, pygame.K_a):
+                if self.index == 0:
+                    self.diff_index = (self.diff_index - 1) % len(self.difficulties)
+            elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                if self.index == 0:
+                    self.diff_index = (self.diff_index + 1) % len(self.difficulties)
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                return self.options[self.index]
+                if self.items[self.index] == "Play":
+                    return f"Play: {self.difficulties[self.diff_index]}"
+                else:
+                    return self.items[self.index]
         return None
 
 class HowToScreen:
