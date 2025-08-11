@@ -101,3 +101,38 @@ jobs:
             SnakeGame-linux-folder.zip
             SnakeGame-linux-bin.zip
 
+  build-linux-arm64:
+    name: Build Linux ARM64 (aarch64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (arm64)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build inside ARM64 container
+        run: |
+          docker run --rm --platform linux/arm64/v8 -v "${{ github.workspace }}:/work" -w /work python:3.11-slim bash -lc "\
+            python -m pip install --upgrade pip setuptools wheel && \
+            pip install -r requirements.txt pyinstaller && \
+            pyinstaller --noconfirm --onefile --name SnakeGame snake_game.py && \
+            mv dist/SnakeGame dist/SnakeGame.bin && \
+            pyinstaller --noconfirm --windowed --name SnakeGame snake_game.py"
+
+      - name: Package ARM64 artifacts
+        run: |
+          rm -f SnakeGame-linux-arm64-*.zip || true
+          zip -j SnakeGame-linux-arm64-bin.zip dist/SnakeGame.bin
+          zip -r SnakeGame-linux-arm64-folder.zip dist/SnakeGame
+
+      - name: Upload ARM64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SnakeGame-linux-arm64
+          path: |
+            SnakeGame-linux-arm64-bin.zip
+            SnakeGame-linux-arm64-folder.zip
+
