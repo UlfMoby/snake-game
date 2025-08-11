@@ -116,11 +116,16 @@ jobs:
       - name: Build inside ARM64 container
         run: |
           docker run --rm --platform linux/arm64/v8 -v "${{ github.workspace }}:/work" -w /work python:3.11-slim bash -lc "\
+            set -euo pipefail && \
+            apt-get update && apt-get install -y --no-install-recommends binutils patchelf zip python3-venv && \
+            python -m venv .venv && \
+            . .venv/bin/activate && \
             python -m pip install --upgrade pip setuptools wheel && \
             pip install -r requirements.txt pyinstaller && \
             pyinstaller --noconfirm --onefile --name SnakeGame snake_game.py && \
             mv dist/SnakeGame dist/SnakeGame.bin && \
-            pyinstaller --noconfirm --windowed --name SnakeGame snake_game.py"
+            pyinstaller --noconfirm --windowed --name SnakeGame snake_game.py && \
+            deactivate"
 
       - name: Package ARM64 artifacts
         run: |
