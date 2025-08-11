@@ -1,4 +1,4 @@
-name: windows-build
+name: multi-platform-build
 
 on:
   push:
@@ -6,8 +6,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -23,19 +26,68 @@ jobs:
           python -m pip install -r requirements.txt
           python -m pip install pyinstaller
 
-      - name: Build Windows exe with PyInstaller
+      - name: Build (windowed folder)
         run: |
           pyinstaller --noconfirm --windowed --name SnakeGame snake_game.py
 
-      - name: Upload artifact (app folder)
-        uses: actions/upload-artifact@v4
-        with:
-          name: SnakeGame-windows-folder
-          path: dist/SnakeGame/
+      - name: Build (onefile)
+        run: |
+          pyinstaller --noconfirm --onefile --name SnakeGame snake_game.py
 
-      - name: Upload artifact (single exe)
+      - name: Package artifacts (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force SnakeGame-windows* -ErrorAction SilentlyContinue
+          Compress-Archive -Path dist/SnakeGame/* -DestinationPath SnakeGame-windows-folder.zip
+          Compress-Archive -Path dist/SnakeGame.exe -DestinationPath SnakeGame-windows-exe.zip
+
+      - name: Package artifacts (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          rm -f SnakeGame-macos* || true
+          if [ -d "dist/SnakeGame.app" ]; then
+            /usr/bin/zip -r SnakeGame-macos-app.zip dist/SnakeGame.app
+          fi
+          if [ -f "dist/SnakeGame" ]; then
+            /usr/bin/zip -j SnakeGame-macos-bin.zip dist/SnakeGame
+          fi
+
+      - name: Package artifacts (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          rm -f SnakeGame-linux* || true
+          if [ -d "dist/SnakeGame" ]; then
+            /usr/bin/zip -r SnakeGame-linux-folder.zip dist/SnakeGame
+          fi
+          if [ -f "dist/SnakeGame" ]; then
+            /usr/bin/zip -j SnakeGame-linux-bin.zip dist/SnakeGame
+          fi
+
+      - name: Upload artifacts (Windows)
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: SnakeGame-windows-exe
-          path: dist/SnakeGame/SnakeGame.exe
+          name: SnakeGame-windows
+          path: |
+            SnakeGame-windows-folder.zip
+            SnakeGame-windows-exe.zip
+
+      - name: Upload artifacts (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SnakeGame-macos
+          path: |
+            SnakeGame-macos-app.zip
+            SnakeGame-macos-bin.zip
+
+      - name: Upload artifacts (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SnakeGame-linux
+          path: |
+            SnakeGame-linux-folder.zip
+            SnakeGame-linux-bin.zip
 
