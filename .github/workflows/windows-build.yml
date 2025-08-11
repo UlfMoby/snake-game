@@ -34,6 +34,16 @@ jobs:
         run: |
           pyinstaller --noconfirm --onefile --name SnakeGame snake_game.py
 
+      - name: Linux fixup (preserve onefile and rebuild folder)
+        if: runner.os == 'Linux'
+        run: |
+          # Preserve the onefile binary before rebuilding the windowed folder
+          if [ -f "dist/SnakeGame" ]; then
+            mv dist/SnakeGame dist/SnakeGame.bin
+          fi
+          # Rebuild the windowed folder so both artifacts exist
+          pyinstaller --noconfirm --windowed --name SnakeGame snake_game.py
+
       - name: Package artifacts (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -60,8 +70,8 @@ jobs:
           if [ -d "dist/SnakeGame" ]; then
             /usr/bin/zip -r SnakeGame-linux-folder.zip dist/SnakeGame
           fi
-          if [ -f "dist/SnakeGame" ]; then
-            /usr/bin/zip -j SnakeGame-linux-bin.zip dist/SnakeGame
+          if [ -f "dist/SnakeGame.bin" ]; then
+            /usr/bin/zip -j SnakeGame-linux-bin.zip dist/SnakeGame.bin
           fi
 
       - name: Upload artifacts (Windows)
